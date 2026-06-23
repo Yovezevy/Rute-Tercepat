@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KurirRoute - Sistem Optimasi Rute Pengiriman</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+</head>
+<body>
+
+  <!-- ============================================ -->
+  <!-- SIDEBAR NAVIGATION -->
+  <!-- ============================================ -->
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="logo">
+        <i class="fas fa-route"></i>
+        <span class="logo-text">KurirRoute</span>
+      </div>
+      <button class="sidebar-toggle" onclick="toggleSidebar()">
+        <i class="fas fa-bars"></i>
+      </button>
+    </div>
+
+    <div class="sidebar-menu">
+      <a class="menu-item active" onclick="navigateTo('home')" data-page="home">
+        <i class="fas fa-home"></i>
+        <span>Beranda</span>
+      </a>
+      <a class="menu-item" onclick="navigateTo('dashboard')" data-page="dashboard">
+        <i class="fas fa-tachometer-alt"></i>
+        <span>Dashboard</span>
+      </a>
+      <a class="menu-item" onclick="navigateTo('route')" data-page="route">
+        <i class="fas fa-map-marked-alt"></i>
+        <span>Cari Rute</span>
+      </a>
+      <a class="menu-item" onclick="navigateTo('packages')" data-page="packages">
+        <i class="fas fa-boxes"></i>
+        <span>Paket</span>
+      </a>
+      <a class="menu-item" onclick="navigateTo('tracking')" data-page="tracking">
+        <i class="fas fa-satellite-dish"></i>
+        <span>Live Tracking</span>
+      </a>
+      <a class="menu-item" onclick="navigateTo('qrcode')" data-page="qrcode">
+        <i class="fas fa-qrcode"></i>
+        <span>QR Code</span>
+      </a>
+      <a class="menu-item" onclick="navigateTo('map')" data-page="map">
+        <i class="fas fa-map"></i>
+        <span>Peta</span>
+      </a>
+      <a class="menu-item" onclick="navigateTo('history')" data-page="history">
+        <i class="fas fa-history"></i>
+        <span>Riwayat</span>
+      </a>
+      <a class="menu-item" onclick="navigateTo('settings')" data-page="settings">
+        <i class="fas fa-cog"></i>
+        <span>Pengaturan</span>
+      </a>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="courier-info">
+        <div class="courier-avatar">
+          <i class="fas fa-user"></i>
+        </div>
+        <div class="courier-details">
+          <span class="courier-name" id="sidebarCourierName">Kurir</span>
+          <span class="courier-status">● Online</span>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ============================================ -->
+  <!-- MAIN CONTENT WRAPPER -->
+  <!-- ============================================ -->
+  <main class="main-wrapper" id="mainWrapper">
+    <!-- Top Bar -->
+    <div class="topbar">
+      <div class="topbar-left">
+        <button class="mobile-menu-btn" onclick="toggleSidebar()">
+          <i class="fas fa-bars"></i>
+        </button>
+        <div class="breadcrumb">
+          <span id="breadcrumb">Beranda</span>
+        </div>
+      </div>
+      <div class="topbar-right">
+        <button class="btn btn-icon" onclick="toggleTheme()" title="Toggle Mode">
+          <i class="fas fa-moon" id="themeIcon"></i>
+        </button>
+        <div class="notification-bell" onclick="showNotification('Tidak ada notifikasi baru', 'info')">
+          <i class="fas fa-bell"></i>
+          <span class="badge" id="notifBadge">0</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- PAGES CONTAINER -->
+    <!-- ============================================ -->
+    <div class="pages-container">
+
+      <!-- ============ PAGE: HOME ============ -->
+      <div class="page active" id="page-home">
+        <div class="home-hero">
+          <div class="hero-content">
+            <div class="hero-badge">
+              <i class="fas fa-bolt"></i> Sistem Optimasi Pengiriman
+            </div>
+            <h1 class="hero-title">Temukan Rute <span class="gradient-text">Terpendek</span> untuk Pengiriman</h1>
+            <p class="hero-subtitle">Optimalkan rute pengiriman paket Anda dengan algoritma Dijkstra, Greedy TSP & Ant Colony Optimization. Hemat waktu, hemat bahan bakar, tingkatkan efisiensi.</p>
+            <div class="hero-buttons">
+              <button class="btn btn-primary btn-large" onclick="navigateTo('route')">
+                <i class="fas fa-search"></i> Mulai Cari Rute
+              </button>
+              <button class="btn btn-outline btn-large" onclick="navigateTo('dashboard')">
+                <i class="fas fa-tachometer-alt"></i> Lihat Dashboard
+              </button>
+            </div>
+            <div class="hero-stats">
+              <div class="hero-stat">
+                <div class="hero-stat-value" id="heroTotalDelivery">0</div>
+                <div class="hero-stat-label">Total Pengiriman</div>
+              </div>
+              <div class="hero-stat">
+                <div class="hero-stat-value" id="heroTotalKm">0 km</div>
+                <div class="hero-stat-label">Jarak Ditempuh</div>
+              </div>
+              <div class="hero-stat">
+                <div class="hero-stat-value" id="heroTotalPackage">0</div>
+                <div class="hero-stat-label">Paket Terkirim</div>
+              </div>
+            </div>
+          </div>
+          <div class="hero-visual">
+            <div class="hero-illustration">
+              <div class="floating-node n1"><i class="fas fa-warehouse"></i></div>
+              <div class="floating-node n2"><i class="fas fa-home"></i></div>
+              <div class="floating-node n3"><i class="fas fa-building"></i></div>
+              <div class="floating-node n4"><i class="fas fa-store"></i></div>
+              <div class="floating-node n5"><i class="fas fa-hospital"></i></div>
+              <svg class="hero-lines" viewBox="0 0 300 300">
+                <line x1="150" y1="50" x2="60" y2="130" stroke="rgba(0,212,255,0.3)" stroke-width="2"/>
+                <line x1="150" y1="50" x2="240" y2="130" stroke="rgba(0,212,255,0.3)" stroke-width="2"/>
+                <line x1="60" y1="130" x2="100" y2="240" stroke="rgba(0,212,255,0.3)" stroke-width="2"/>
+                <line x1="240" y1="130" x2="200" y2="240" stroke="rgba(0,212,255,0.3)" stroke-width="2"/>
+                <line x1="100" y1="240" x2="200" y2="240" stroke="rgba(0,212,255,0.5)" stroke-width="2"/>
+                <line x1="150" y1="50" x2="100" y2="240" stroke="rgba(0,255,136,0.6)" stroke-width="3" stroke-dasharray="5,3"/>
+                <line x1="100" y1="240" x2="240" y2="130" stroke="rgba(0,255,136,0.6)" stroke-width="3" stroke-dasharray="5,3"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <!-- Features Section -->
+        <div class="home-features">
+          <h2 class="section-title">Fitur Utama</h2>
+          <div class="features-grid">
+            <div class="feature-card">
+              <div class="feature-icon"><i class="fas fa-route"></i></div>
+              <h3>Algoritma Dijkstra</h3>
+              <p>Temukan jalur terpendek dari titik A ke titik B dengan algoritma yang terbukti optimal.</p>
+            </div>
+            <div class="feature-card">
+              <div class="feature-icon"><i class="fas fa-bug"></i></div>
+              <h3>Ant Colony Optimization</h3>
+              <p>Optimasi rute dengan metode koloni semut untuk hasil yang lebih baik dari Greedy.</p>
+            </div>
+            <div class="feature-card">
+              <div class="feature-icon"><i class="fas fa-satellite-dish"></i></div>
+              <h3>Live Tracking & GPS</h3>
+              <p>Simulasi real-time tracking kurir dan integrasi GPS untuk posisi akurat.</p>
+            </div>
+            <div class="feature-card">
+              <div class="feature-icon"><i class="fas fa-qrcode"></i></div>
+              <h3>QR Code Paket</h3>
+              <p>Generate dan scan QR Code untuk setiap paket pengiriman.</p>
+            </div>
+            <div class="feature-card">
+              <div class="feature-icon"><i class="fas fa-road"></i></div>
+              <h3>Kondisi Jalan</h3>
+              <p>Tandai jalan ditutup atau macet untuk rute yang lebih akurat.</p>
+            </div>
+            <div class="feature-card">
+              <div class="feature-icon"><i class="fas fa-chart-bar"></i></div>
+              <h3>Statistik & Riwayat</h3>
+              <p>Lacak performa pengiriman harian dengan dashboard informatif.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- How It Works -->
+        <div class="home-howitworks">
+          <h2 class="section-title">Cara Kerja</h2>
+          <div class="steps-timeline">
+            <div class="timeline-step">
+              <div class="step-number">1</div>
+              <div class="step-content">
+                <h4>Input Lokasi</h4>
+                <p>Pilih lokasi awal dan tambahkan alamat tujuan pengiriman.</p>
+              </div>
+            </div>
+            <div class="timeline-step">
+              <div class="step-number">2</div>
+              <div class="step-content">
+                <h4>Proses Algoritma</h4>
+                <p>Sistem menghitung rute optimal menggunakan Dijkstra, Greedy TSP, atau ACO.</p>
+              </div>
+            </div>
+            <div class="timeline-step">
+              <div class="step-number">3</div>
+              <div class="step-content">
+                <h4>Hasil Rute</h4>
+                <p>Dapatkan urutan pengiriman terbaik dengan total jarak minimum.</p>
+              </div>
+            </div>
+            <div class="timeline-step">
+              <div class="step-number">4</div>
+              <div class="step-content">
+                <h4>Mulai Kirim</h4>
+                <p>Ikuti rute, pantau via live tracking, dan update status setiap paket.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ PAGE: DASHBOARD ============ -->
+      <div class="page" id="page-dashboard">
+        <h2 class="page-title"><i class="fas fa-tachometer-alt"></i> Dashboard</h2>
+
+        <div class="dashboard-stats">
+          <div class="stat-card stat-blue">
+            <div class="stat-icon"><i class="fas fa-road"></i></div>
+            <div class="stat-info">
+              <div class="stat-value" id="dashTotalKm">0 km</div>
+              <div class="stat-label">Total Jarak Hari Ini</div>
+            </div>
+          </div>
+          <div class="stat-card stat-green">
+            <div class="stat-icon"><i class="fas fa-box-open"></i></div>
+            <div class="stat-info">
+              <div class="stat-value" id="dashDelivered">0</div>
+              <div class="stat-label">Paket Terkirim</div>
+            </div>
+          </div>
+          <div class="stat-card stat-orange">
+            <div class="stat-icon"><i class="fas fa-clock"></i></div>
+            <div class="stat-info">
+              <div class="stat-value" id="dashTime">0 mnt</div>
+              <div class="stat-label">Waktu Perjalanan</div>
+            </div>
+          </div>
+          <div class="stat-card stat-purple">
+            <div class="stat-icon"><i class="fas fa-gas-pump"></i></div>
+            <div class="stat-info">
+              <div class="stat-value" id="dashFuel">0 L</div>
+              <div class="stat-label">Estimasi BBM</div>
+            </div>
+          </div>
+          <div class="stat-card stat-red">
+            <div class="stat-icon"><i class="fas fa-motorcycle"></i></div>
+            <div class="stat-info">
+              <div class="stat-value" id="dashTrips">0</div>
+              <div class="stat-label">Total Perjalanan</div>
+            </div>
+          </div>
+          <div class="stat-card stat-teal">
+            <div class="stat-icon"><i class="fas fa-boxes"></i></div>
+            <div class="stat-info">
+              <div class="stat-value" id="dashPending">0</div>
+              <div class="stat-label">Paket Menunggu</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="dashboard-grid">
+          <div class="panel">
+            <h3><i class="fas fa-chart-bar"></i> Statistik Mingguan</h3>
+            <div class="chart-container">
+              <canvas id="weeklyChart" width="500" height="200"></canvas>
+            </div>
+          </div>
+          <div class="panel">
+            <h3><i class="fas fa-info-circle"></i> Ringkasan Hari Ini</h3>
+            <div class="summary-list">
+              <div class="summary-item">
+                <span class="summary-label">Kecepatan Rata-rata</span>
+                <span class="summary-value" id="dashAvgSpeed">30 km/jam</span>
+              </div>
+              <div class="summary-item">
+                <span class="summary-label">Efisiensi Rute</span>
+                <span class="summary-value" id="dashEfficiency">-</span>
+              </div>
+              <div class="summary-item">
+                <span class="summary-label">Paket Prioritas Tinggi</span>
+                <span class="summary-value" id="dashUrgent">0</span>
+              </div>
+              <div class="summary-item">
+                <span class="summary-label">Jalan Ditutup</span>
+                <span class="summary-value" id="dashBlocked">0</span>
+              </div>
+              <div class="summary-item">
+                <span class="summary-label">Terakhir Diperbarui</span>
+                <span class="summary-value" id="dashLastUpdate">-</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h3><i class="fas fa-stream"></i> Aktivitas Terbaru</h3>
+          <div id="recentActivity" class="activity-list"></div>
+        </div>
+      </div>
+
+      <!-- ============ PAGE: ROUTE ============ -->
+      <div class="page" id="page-route">
+        <h2 class="page-title"><i class="fas fa-map-marked-alt"></i> Cari Rute Terpendek</h2>
+
+        <div class="route-layout">
+          <!-- Input Panel -->
+          <div class="route-input-panel">
+            <div class="panel">
+              <h3><i class="fas fa-map-marker-alt"></i> Input Pengiriman</h3>
+
+              <div class="form-group">
+                <label>Lokasi Awal Kurir</label>
+                <select id="startLocation">
+                  <option value="">-- Pilih Lokasi Awal --</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label>Tujuan Pengiriman</label>
+                <div id="destinationList" class="destination-list"></div>
+                <div class="destination-input-group">
+                  <select id="addDestination">
+                    <option value="">-- Tambah Tujuan --</option>
+                  </select>
+                  <button class="btn btn-add" onclick="addDestination()">
+                    <i class="fas fa-plus"></i>
+                  </button>
+                </div>
+              </div>
+
+              <div class="button-group">
+                <button class="btn btn-primary" onclick="findRoute()">
+                  <i class="fas fa-search"></i> Cari Rute Terpendek
+                </button>
+                <button class="btn btn-compare" onclick="compareAlgorithms()">
+                  <i class="fas fa-balance-scale"></i> Bandingkan Algoritma
+                </button>
+                <button class="btn btn-aco" onclick="runACO()">
+                  <i class="fas fa-bug"></i> Ant Colony Optimization
+                </button>
+                <button class="btn btn-secondary" onclick="resetAll()">
+                  <i class="fas fa-redo"></i> Reset
+                </button>
+              </div>
+            </div>
+
+            <!-- Kondisi Jalan -->
+            <div class="panel">
+              <h3><i class="fas fa-exclamation-triangle"></i> Kondisi Jalan</h3>
+              <div class="road-input-row">
+                <select id="roadFrom"><option value="">Dari</option></select>
+                <select id="roadTo"><option value="">Ke</option></select>
+              </div>
+              <div class="road-btn-row">
+                <button class="btn btn-danger btn-small" onclick="blockRoad()">
+                  <i class="fas fa-ban"></i> Tutup
+                </button>
+                <button class="btn btn-warning btn-small" onclick="addTraffic()">
+                  <i class="fas fa-car"></i> Macet
+                </button>
+                <button class="btn btn-success btn-small" onclick="resetRoads()">
+                  <i class="fas fa-check"></i> Reset
+                </button>
+              </div>
+              <div id="blockedRoadsList" class="blocked-roads-list"></div>
+            </div>
+
+            <!-- Hasil -->
+            <div id="result" class="panel result-box hidden">
+              <h3><i class="fas fa-check-circle"></i> Hasil Pencarian</h3>
+              <div id="resultContent"></div>
+              <div class="result-actions">
+                <button class="btn btn-small btn-success" onclick="exportRoute()">
+                  <i class="fas fa-download"></i> Export
+                </button>
+                <button class="btn btn-small" onclick="printRoute()">
+                  <i class="fas fa-print"></i> Print
+                </button>
+              </div>
+            </div>
+
+            <!-- Perbandingan -->
+            <div id="comparisonResult" class="panel comparison-box hidden">
+              <h3><i class="fas fa-balance-scale"></i> Perbandingan Algoritma</h3>
+              <div id="comparisonContent"></div>
+            </div>
+
+            <!-- ACO Result -->
+            <div id="acoResult" class="panel aco-box hidden">
+              <h3><i class="fas fa-bug"></i> Hasil Ant Colony Optimization</h3>
+              <div id="acoContent"></div>
+            </div>
+
+            <!-- Steps -->
+            <div id="steps" class="panel steps-box hidden">
+              <h3><i class="fas fa-list-ol"></i> Detail Langkah</h3>
+              <div id="stepsContent"></div>
+            </div>
+          </div>
+
+          <!-- Visualization Panel -->
+          <div class="route-visual-panel">
+            <div class="panel">
+              <div class="visual-tabs">
+                <button class="vtab active" onclick="switchVisualTab('graf')">
+                  <i class="fas fa-project-diagram"></i> Graf
+                </button>
+                <button class="vtab" onclick="switchVisualTab('tabel')">
+                  <i class="fas fa-table"></i> Tabel
+                </button>
+              </div>
+
+              <div id="vtab-graf" class="vtab-content active">
+                <div class="canvas-container">
+                  <canvas id="graphCanvas" width="650" height="480"></canvas>
+                </div>
+                <div class="legend">
+                  <span class="legend-item"><span class="dot dot-start"></span> Awal</span>
+                  <span class="legend-item"><span class="dot dot-dest"></span> Tujuan</span>
+                  <span class="legend-item"><span class="dot dot-node"></span> Node</span>
+                  <span class="legend-item"><span class="dot dot-blocked"></span> Ditutup</span>
+                  <span class="legend-item"><span class="line-route"></span> Rute</span>
+                </div>
+              </div>
+
+              <div id="vtab-tabel" class="vtab-content">
+                <div id="distanceTable" class="distance-table-container"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ PAGE: PACKAGES ============ -->
+      <div class="page" id="page-packages">
+        <div class="page-header">
+          <h2 class="page-title"><i class="fas fa-boxes"></i> Manajemen Paket</h2>
+          <button class="btn btn-primary" onclick="showAddPackageModal()">
+            <i class="fas fa-plus"></i> Tambah Paket
+          </button>
+        </div>
+
+        <div class="filter-bar">
+          <div class="search-box">
+            <i class="fas fa-search"></i>
+            <input type="text" id="packageSearch" placeholder="Cari paket..." oninput="filterPackages()">
+          </div>
+          <select id="packageFilter" onchange="filterPackages()">
+            <option value="all">Semua Status</option>
+            <option value="pending">Menunggu</option>
+            <option value="delivering">Dikirim</option>
+            <option value="delivered">Terkirim</option>
+          </select>
+          <select id="priorityFilter" onchange="filterPackages()">
+            <option value="all">Semua Prioritas</option>
+            <option value="urgent">Mendesak</option>
+            <option value="normal">Normal</option>
+            <option value="low">Biasa</option>
+          </select>
+        </div>
+
+        <div class="package-stats">
+          <div class="pkg-stat">
+            <span class="pkg-stat-count" id="pkgTotal">0</span>
+            <span class="pkg-stat-label">Total</span>
+          </div>
+          <div class="pkg-stat pending">
+            <span class="pkg-stat-count" id="pkgPending">0</span>
+            <span class="pkg-stat-label">Menunggu</span>
+          </div>
+          <div class="pkg-stat delivering">
+            <span class="pkg-stat-count" id="pkgDelivering">0</span>
+            <span class="pkg-stat-label">Dikirim</span>
+          </div>
+          <div class="pkg-stat delivered">
+            <span class="pkg-stat-count" id="pkgDelivered">0</span>
+            <span class="pkg-stat-label">Terkirim</span>
+          </div>
+        </div>
+
+        <div id="packageGrid" class="package-grid"></div>
+      </div>
+
+      <!-- ============ PAGE: LIVE TRACKING ============ -->
+      <div class="page" id="page-tracking">
+        <h2 class="page-title"><i class="fas fa-satellite-dish"></i> Live Tracking Kurir</h2>
+
+        <div class="tracking-layout">
+          <!-- Tracking Controls -->
+          <div class="tracking-controls">
+            <div class="panel">
+              <h3><i class="fas fa-play-circle"></i> Kontrol Tracking</h3>
+
+              <div class="gps-status-card">
+                <div class="gps-indicator" id="gpsIndicator">
+                  <i class="fas fa-satellite-dish"></i>
+                </div>
+                <div class="gps-info">
+                  <span class="gps-label">Status GPS</span>
+                  <span class="gps-value" id="gpsStatus">Tidak Aktif</span>
+                </div>
+              </div>
+
+              <div class="gps-coords" id="gpsCoords">
+                <div class="coord-item">
+                  <span class="coord-label">Latitude</span>
+                  <span class="coord-value" id="gpsLat">-</span>
+                </div>
+                <div class="coord-item">
+                  <span class="coord-label">Longitude</span>
+                  <span class="coord-value" id="gpsLng">-</span>
+                </div>
+                <div class="coord-item">
+                  <span class="coord-label">Akurasi</span>
+                  <span class="coord-value" id="gpsAccuracy">-</span>
+                </div>
+              </div>
+
+              <div class="button-group">
+                <button class="btn btn-primary" onclick="startGPSTracking()">
+                  <i class="fas fa-location-arrow"></i> Aktifkan GPS
+                </button>
+                <button class="btn btn-success" onclick="startSimulation()" id="btnStartSim">
+                  <i class="fas fa-play"></i> Mulai Simulasi Pengiriman
+                </button>
+                <button class="btn btn-danger" onclick="stopSimulation()" id="btnStopSim" style="display:none;">
+                  <i class="fas fa-stop"></i> Hentikan Simulasi
+                </button>
+                <button class="btn btn-secondary" onclick="resetTracking()">
+                  <i class="fas fa-redo"></i> Reset Tracking
+                </button>
+              </div>
+            </div>
+
+            <!-- Tracking Info -->
+            <div class="panel">
+              <h3><i class="fas fa-info-circle"></i> Info Perjalanan</h3>
+              <div class="tracking-info-grid">
+                <div class="tracking-info-card">
+                  <i class="fas fa-road"></i>
+                  <div class="tracking-info-value" id="trackDistance">0 km</div>
+                  <div class="tracking-info-label">Jarak Ditempuh</div>
+                </div>
+                <div class="tracking-info-card">
+                  <i class="fas fa-clock"></i>
+                  <div class="tracking-info-value" id="trackTime">00:00</div>
+                  <div class="tracking-info-label">Waktu Berjalan</div>
+                </div>
+                <div class="tracking-info-card">
+                  <i class="fas fa-tachometer-alt"></i>
+                  <div class="tracking-info-value" id="trackSpeed">0 km/h</div>
+                  <div class="tracking-info-label">Kecepatan</div>
+                </div>
+                <div class="tracking-info-card">
+                  <i class="fas fa-map-marker-alt"></i>
+                  <div class="tracking-info-value" id="trackNext">-</div>
+                  <div class="tracking-info-label">Tujuan Berikutnya</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Delivery Progress -->
+            <div class="panel">
+              <h3><i class="fas fa-tasks"></i> Progress Pengiriman</h3>
+              <div id="trackingProgress" class="tracking-progress">
+                <p style="color:var(--text-muted);font-size:0.82rem;text-align:center;">Cari rute terlebih dahulu di halaman Cari Rute</p>
+              </div>
+            </div>
+
+            <!-- Voice Navigation -->
+            <div class="panel">
+              <h3><i class="fas fa-volume-up"></i> Voice Navigation</h3>
+              <div class="voice-controls">
+                <button class="btn btn-small" onclick="narrateRoute()">
+                  <i class="fas fa-play"></i> Bacakan Rute
+                </button>
+                <button class="btn btn-small" onclick="narrateNext()">
+                  <i class="fas fa-forward"></i> Tujuan Berikutnya
+                </button>
+                <button class="btn btn-small btn-danger" onclick="stopNarration()">
+                  <i class="fas fa-stop"></i> Stop
+                </button>
+              </div>
+              <div class="voice-status" id="voiceStatus">
+                <i class="fas fa-microphone-slash"></i> Narasi tidak aktif
+              </div>
+            </div>
+          </div>
+
+          <!-- Tracking Map -->
+          <div class="tracking-map-panel">
+            <div class="panel">
+              <h3><i class="fas fa-map"></i> Peta Live Tracking</h3>
+              <div id="trackingMapContainer" class="tracking-map"></div>
+              <div class="tracking-legend">
+                <span class="legend-item"><span class="dot" style="background:#00ff88;"></span> Posisi Kurir</span>
+                <span class="legend-item"><span class="dot" style="background:#ff4757;"></span> Tujuan</span>
+                <span class="legend-item"><span class="dot" style="background:#ffa502;"></span> Sudah Dikunjungi</span>
+                <span class="legend-item"><span class="line-route"></span> Rute</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ PAGE: QR CODE ============ -->
+      <div class="page" id="page-qrcode">
+        <h2 class="page-title"><i class="fas fa-qrcode"></i> QR Code Paket</h2>
+
+        <div class="qr-layout">
+          <!-- QR Generator -->
+          <div class="qr-generator-panel">
+            <div class="panel">
+              <h3><i class="fas fa-magic"></i> Generate QR Code</h3>
+
+              <div class="form-group">
+                <label>Pilih Paket</label>
+                <select id="qrPackageSelect" onchange="previewQRData()">
+                  <option value="">-- Pilih Paket --</option>
+                </select>
+              </div>
+
+              <div id="qrPreviewData" class="qr-preview-data hidden">
+                <h4>Data QR Code:</h4>
+                <div class="qr-data-list" id="qrDataList"></div>
+              </div>
+
+              <div class="button-group">
+                <button class="btn btn-primary" onclick="generateQRCode()">
+                  <i class="fas fa-qrcode"></i> Generate QR Code
+                </button>
+                <button class="btn btn-secondary" onclick="generateAllQR()">
+                  <i class="fas fa-layer-group"></i> Generate Semua Paket
+                </button>
+              </div>
+            </div>
+
+            <!-- QR Scanner -->
+            <div class="panel">
+              <h3><i class="fas fa-camera"></i> Scan QR Code</h3>
+              <p style="font-size:0.82rem;color:var(--text-muted);margin-bottom:12px;">
+                Scan QR Code paket untuk melihat detail dan update status pengiriman.
+              </p>
+              <div class="form-group">
+                <label>Input Manual (Paste QR Data)</label>
+                <textarea id="qrScanInput" rows="3" placeholder='Paste data QR code disini...' style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--card-bg);color:var(--text-primary);font-size:0.85rem;resize:vertical;outline:none;"></textarea>
+              </div>
+              <button class="btn btn-primary" onclick="scanQRCode()">
+                <i class="fas fa-search"></i> Proses QR Data
+              </button>
+              <div id="qrScanResult" class="qr-scan-result hidden"></div>
+            </div>
+          </div>
+
+          <!-- QR Display -->
+          <div class="qr-display-panel">
+            <div class="panel">
+              <h3><i class="fas fa-th"></i> QR Code Paket</h3>
+              <div id="qrCodeGrid" class="qr-code-grid">
+                <p style="text-align:center;color:var(--text-muted);padding:30px;">
+                  Pilih paket dan generate QR Code untuk ditampilkan di sini.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ PAGE: MAP ============ -->
+      <div class="page" id="page-map">
+        <h2 class="page-title"><i class="fas fa-map"></i> Peta Interaktif</h2>
+        <div class="fullmap-container">
+          <div id="mapContainer" class="map-fullscreen"></div>
+        </div>
+      </div>
+
+      <!-- ============ PAGE: HISTORY ============ -->
+      <div class="page" id="page-history">
+        <div class="page-header">
+          <h2 class="page-title"><i class="fas fa-history"></i> Riwayat Pengiriman</h2>
+          <button class="btn btn-danger btn-small" onclick="clearHistory()">
+            <i class="fas fa-trash"></i> Hapus Semua
+          </button>
+        </div>
+
+        <div class="filter-bar">
+          <div class="search-box">
+            <i class="fas fa-search"></i>
+            <input type="text" id="historySearch" placeholder="Cari riwayat..." oninput="filterHistory()">
+          </div>
+        </div>
+
+        <div id="historyList" class="history-list"></div>
+      </div>
+
+      <!-- ============ PAGE: SETTINGS ============ -->
+      <div class="page" id="page-settings">
+        <h2 class="page-title"><i class="fas fa-cog"></i> Pengaturan</h2>
+
+        <div class="settings-grid">
+          <!-- Profil Kurir -->
+          <div class="panel">
+            <h3><i class="fas fa-user"></i> Profil Kurir</h3>
+            <div class="form-group">
+              <label>Nama Kurir</label>
+              <input type="text" id="settingName" placeholder="Masukkan nama" value="Kurir">
+            </div>
+            <div class="form-group">
+              <label>Jenis Kendaraan</label>
+              <select id="settingVehicle">
+                <option value="motorcycle">🏍️ Motor</option>
+                <option value="car">🚗 Mobil</option>
+                <option value="bicycle">🚲 Sepeda</option>
+                <option value="truck">🚛 Truk</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Kapasitas Maks (kg)</label>
+              <input type="number" id="settingCapacity" value="50" min="1">
+            </div>
+            <button class="btn btn-primary" onclick="saveSettings()">
+              <i class="fas fa-save"></i> Simpan Profil
+            </button>
+          </div>
+
+          <!-- Kecepatan -->
+          <div class="panel">
+            <h3><i class="fas fa-tachometer-alt"></i> Pengaturan Kecepatan</h3>
+            <div class="form-group">
+              <label>Kecepatan Rata-rata (km/jam)</label>
+              <input type="number" id="settingSpeed" value="30" min="5" max="120">
+            </div>
+            <div class="form-group">
+              <label>Konsumsi BBM (km/liter)</label>
+              <input type="number" id="settingFuel" value="35" min="5" max="100">
+            </div>
+            <div class="form-group">
+              <label>Waktu Berhenti per Tujuan (menit)</label>
+              <input type="number" id="settingStopTime" value="5" min="0" max="30">
+            </div>
+            <button class="btn btn-primary" onclick="saveSettings()">
+              <i class="fas fa-save"></i> Simpan Kecepatan
+            </button>
+          </div>
+
+          <!-- Tampilan -->
+          <div class="panel">
+            <h3><i class="fas fa-palette"></i> Tampilan</h3>
+            <div class="form-group">
+              <label>Tema</label>
+              <select id="settingTheme" onchange="applyThemeSetting()">
+                <option value="dark">🌙 Gelap</option>
+                <option value="light">☀️ Terang</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Warna Aksen</label>
+              <select id="settingAccent" onchange="applyAccentColor()">
+                <option value="#00d4ff">🔵 Biru Cyan</option>
+                <option value="#667eea">🟣 Ungu</option>
+                <option value="#00ff88">🟢 Hijau</option>
+                <option value="#ff6b6b">🔴 Merah</option>
+                <option value="#ffa502">🟡 Kuning</option>
+              </select>
+            </div>
+            <button class="btn btn-primary" onclick="saveSettings()">
+              <i class="fas fa-save"></i> Simpan Tampilan
+            </button>
+          </div>
+
+          <!-- Data -->
+          <div class="panel">
+            <h3><i class="fas fa-database"></i> Data & Penyimpanan</h3>
+            <div class="data-info">
+              <p>Paket tersimpan: <strong id="dataPackageCount">0</strong></p>
+              <p>Riwayat tersimpan: <strong id="dataHistoryCount">0</strong></p>
+              <p>Penyimpanan: <strong id="dataStorage">0 KB</strong></p>
+            </div>
+            <div class="button-group">
+              <button class="btn btn-warning btn-small" onclick="exportAllData()">
+                <i class="fas fa-download"></i> Export Semua Data
+              </button>
+              <button class="btn btn-danger btn-small" onclick="clearAllData()">
+                <i class="fas fa-trash"></i> Hapus Semua Data
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+    <!-- END PAGES CONTAINER -->
+
+  </main>
+
+  <!-- ============================================ -->
+  <!-- MODAL TAMBAH PAKET -->
+  <!-- ============================================ -->
+  <div id="packageModal" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3><i class="fas fa-box"></i> Tambah Paket Baru</h3>
+        <button class="btn btn-icon" onclick="closeModal()"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>ID Paket</label>
+          <input type="text" id="pkgId" readonly>
+        </div>
+        <div class="form-group">
+          <label>Nama Penerima</label>
+          <input type="text" id="pkgRecipient" placeholder="Nama penerima">
+        </div>
+        <div class="form-group">
+          <label>Alamat Tujuan</label>
+          <select id="pkgDestination"><option value="">-- Pilih --</option></select>
+        </div>
+        <div class="form-group">
+          <label>Berat (kg)</label>
+          <input type="number" id="pkgWeight" placeholder="0.5" step="0.1" min="0.1">
+        </div>
+        <div class="form-group">
+          <label>Prioritas</label>
+          <select id="pkgPriority">
+            <option value="urgent">🔴 Mendesak</option>
+            <option value="normal" selected>🟡 Normal</option>
+            <option value="low">🟢 Tidak Mendesak</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-primary" onclick="addPackage()"><i class="fas fa-plus"></i> Tambah</button>
+        <button class="btn btn-secondary" onclick="closeModal()">Batal</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================ -->
+  <!-- NOTIFICATION -->
+  <!-- ============================================ -->
+  <div id="notification" class="notification hidden">
+    <div class="notification-content">
+      <i class="fas fa-info-circle" id="notifIcon"></i>
+      <span id="notificationText"></span>
+    </div>
+  </div>
+
+  <!-- ============================================ -->
+  <!-- SCRIPT -->
+  <!-- ============================================ -->
+  <script src="script.js"></script>
+</body>
+</html>
